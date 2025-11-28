@@ -1,0 +1,3 @@
+$(eval $(call addlib,appbob))
+
+APPBOB_SRCS-y += $(APPBOB_BASE)/main.c
