@@ -5,34 +5,17 @@ name: bob
 unikraft:
   version: stable
   kconfig:
-    CONFIG_LIBRAMFS: 'y'
     CONFIG_LIBUK9P: "y"
     CONFIG_LIB9PFS: "y"
     CONFIG_LIBVFSCORE_AUTOMOUNT_UP: 'y'
     CONFIG_LIBVFSCORE_AUTOMOUNT: 'y'
-    CONFIG_LIBVFSCORE: 'y'
-    CONFIG_LIBPOSIX_SYSINFO: "y"
-    CONFIG_LIBPOSIX_USER: "y"
-    CONFIG_LIBUKMMAP: "y"
-    CONFIG_LIBUKLIBPARAM: "y"
-    CONFIG_LIBVFSCORE_ROOTFS_9PFS: "y"
-    CONFIG_LIBVFSCORE_ROOTFS: "9pfs"
-    CONFIG_LIBVFSCORE_ROOTDEV: "fs1"
 
-volume: ./shared:/
+volumes: ./shared:/
 
 libraries:
-  musl: stable
+  musl: staging
 
 targets:
   - name: bob
     architecture: x86_64
     platform: kvm
-    kconfig:
-      CONFIG_PLAT_KVM: "y"
-      CONFIG_LIBDEVFS_AUTOMOUNT: "y"
-      CONFIG_LIBVFSCORE_AUTOMOUNT_ROOTFS: "y"
-      CONFIG_LIBVFSCORE_ROOTFS_9PFS: "y"
-      CONFIG_LIBVFSCORE_ROOTFS: "9pfs"
-      CONFIG_LIBVFSCORE_ROOTDEV: "fs1"
-      CONFIG_VIRTIO_PCI: "y"
