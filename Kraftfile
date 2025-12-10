@@ -10,7 +10,7 @@ unikraft:
     CONFIG_LIBVFSCORE_AUTOMOUNT_UP: 'y'
     CONFIG_LIBVFSCORE_AUTOMOUNT: 'y'
 
-volumes: ./shared:/
+volumes: /tmp/shared:/
 
 libraries:
   musl: staging
