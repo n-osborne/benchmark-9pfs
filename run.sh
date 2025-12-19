@@ -3,29 +3,34 @@
 SHARED="/tmp/shared"
 DATA=$SHARED/data
 RESULTS=$SHARED/results.txt
+OUTDIR="results"
 
 mkdir -p $SHARED
+mkdir -p $OUTDIR
+rm ${OUTDIR}/*
 
-# create an empty results.txt file otherwise unikraft (still) fail when
-# creating it
+for size in 1 3 5 7 9
+do
+  BUFSIZE=${size}"00000"
+  printf "buffer size: %s\n" $BUFSIZE
+
+# create an empty results file otherwise unikraft (still) fails when creating
+# it
 > $RESULTS
 
-touch $SHARED/data
-
-for MSIZE in 32 64 128 256 512 1024 2048 4096
+for _ in {0..99}
 do
+dd if=/dev/urandom of=$DATA bs=64M count=16 iflag=fullblock
 
-  for i in {0..49}
-  do
-  dd if=/dev/urandom of=$DATA bs=64M count=16 iflag=fullblock
+qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G \
+  -nodefaults -serial stdio -kernel .unikraft/build/bob_qemu-x86_64 \
+  -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $BUFSIZE" \
+  -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
 
-  printf "MSIZE: %s\t" $MSIZE >> $RESULTS
-  qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G \
-    -nodefaults -serial stdio -kernel .unikraft/build/bob_qemu-x86_64 \
-    -append 'vfs.fstab=[ "fs1:/:9pfs:::mkmp" ] -m $MSIZE --' \
-    -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
-
-  done
 done
 
-mv $RESULTS compare_msize_1G.txt
+sed -i 's/\x00//g' $RESULTS
+sed -i '/^\s*$/d' $RESULTS
+sort -n $RESULTS -o $OUTDIR/compare_msize_1G_${size}00K
+
+done
