@@ -22,29 +22,9 @@ long compute_time_ms(struct timespec *start, struct timespec *end) {
   return ns / 1000000L + sec * 1e3;
 }
 
-int main(int argc, char **argv) {
-
-  int fd, res, length, buf_size;
-  long time;
-  char *buf, *str;
+long benchmark_read(int fd, int buf_size, char* buf) {
+  int res;
   struct timespec start, end;
-
-  printf("Let's try some stuff!\n\n");
-
-  // Not the best error handling...
-  if (argc < 1) { exit(EXIT_FAILURE); }
-  buf_size = atoi(argv[1]);
-  if (buf_size == 0) { exit(EXIT_FAILURE); }
-
-  buf = malloc(buf_size);
-  if (buf == NULL) { exit(EXIT_FAILURE); }
-
-  fd = open(PATH, O_RDONLY, 0777);
-  if (fd == -1) {
-    free(buf);
-    perror("open () failed:");
-    exit(EXIT_FAILURE);
-  };
 
   printf("Reading %s...\n", PATH);
 
@@ -74,7 +54,34 @@ int main(int argc, char **argv) {
   free(buf);
   close(fd);
 
-  time = compute_time_ms(&start, &end);
+  return compute_time_ms(&start, &end);
+}
+
+int main(int argc, char **argv) {
+
+  int fd, res, length, buf_size;
+  long time;
+  char *buf, *str;
+  struct timespec start, end;
+
+  printf("Let's try some stuff!\n\n");
+
+  // Not the best error handling...
+  if (argc < 1) { exit(EXIT_FAILURE); }
+  buf_size = atoi(argv[1]);
+  if (buf_size == 0) { exit(EXIT_FAILURE); }
+
+  buf = malloc(buf_size);
+  if (buf == NULL) { exit(EXIT_FAILURE); }
+
+  fd = open(PATH, O_RDONLY, 0777);
+  if (fd == -1) {
+    free(buf);
+    perror("open () failed:");
+    exit(EXIT_FAILURE);
+  };
+
+  time = benchmark_read(fd, buf_size, buf);
   length = snprintf(NULL, 0, "%ld\n", time);
   if (length < 0) {
     perror("snprintf() failed:");
