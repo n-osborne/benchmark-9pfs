@@ -31,6 +31,6 @@ done
 
 sed -i 's/\x00//g' $RESULTS
 sed -i '/^\s*$/d' $RESULTS
-sort -n $RESULTS -o $OUTDIR/compare_msize_1G_${size}00K
+sort -n $RESULTS -o $OUTDIR/read_1G_${size}00K
 
 done
