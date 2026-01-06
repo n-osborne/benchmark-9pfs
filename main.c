@@ -58,6 +58,50 @@ long benchmark_read(int fd, int buf_size, char* buf) {
   return compute_time_ms(&start, &end);
 }
 
+long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
+  int i, res, count;
+  struct timespec start, end;
+
+  printf("Writing some data to %s...\n", PATH);
+
+  // feel the buffer with data
+  for (i = 0; i < buf_size; i++) {
+    buf[i] = 'a';
+  }
+
+  count = 0;
+
+  // start the clock
+  res = clock_gettime(CLOCK_MONOTONIC, &start);
+  if (res == -1) {
+    free(buf);
+    close(fd);
+    perror("clock_gettime () failed:");
+  }
+
+  // write data to file
+  while (count < data_size) {
+    res = write(fd, buf, buf_size);
+    if (res == -1) {
+      free(buf);
+      close(fd);
+      perror("write() failed");
+      exit(EXIT_FAILURE);
+    }
+    count += res;
+  }
+
+  // stop the clock
+  res = clock_gettime(CLOCK_MONOTONIC, &end);
+  if (res == -1) {
+    free(buf);
+    close(fd);
+    perror ("clock_gettime () failed:");
+  }
+
+  return compute_time_ms(&start, &end);
+}
+
 int main(int argc, char **argv) {
 
   int fd, res, length, buf_size, data_size;
@@ -99,6 +143,9 @@ int main(int argc, char **argv) {
   // Run benchmark according the mode given on call
   if (strcmp(argv[2], "read") == 0) {
     time = benchmark_read(fd, buf_size, buf);
+  }
+  else if (strcmp(argv[2], "write") == 0) {
+    time = benchmark_write(fd, buf_size, data_size, buf);
   }
   else { exit(EXIT_FAILURE); }
 
