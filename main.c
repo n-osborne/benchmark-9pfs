@@ -32,30 +32,31 @@ long benchmark_read(int fd, int buf_size, char* buf) {
   // start the clock
   res = clock_gettime(CLOCK_MONOTONIC, &start);
   if (res == -1) {
-    free(buf);
-    close(fd);
     perror("clock_gettime () failed:");
+    goto free_ressources_and_exit;
   }
 
   // read data
   while ((res = read(fd, buf, buf_size))) {
     if (res == -1) {
-      free(buf);
-      close(fd);
       perror("read () failed:");
-      exit(EXIT_FAILURE);
+      goto free_ressources_and_exit;
     }
   }
 
   // stop the clock
   res = clock_gettime(CLOCK_MONOTONIC, &end);
   if (res == -1) {
-    free(buf);
-    close(fd);
     perror ("clock_gettime () failed:");
+    goto free_ressources_and_exit;
   }
 
   return compute_time_ms(&start, &end);
+
+  free_ressources_and_exit:
+    free(buf);
+    close(fd);
+    exit(EXIT_FAILURE);
 }
 
 long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
@@ -64,7 +65,7 @@ long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
 
   printf("Writing some data to %s...\n", PATH);
 
-  // feel the buffer with data
+  // fill the buffer with data
   for (i = 0; i < buf_size; i++) {
     buf[i] = 'a';
   }
@@ -74,19 +75,16 @@ long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
   // start the clock
   res = clock_gettime(CLOCK_MONOTONIC, &start);
   if (res == -1) {
-    free(buf);
-    close(fd);
     perror("clock_gettime () failed:");
+    goto free_ressources_and_exit;
   }
 
   // write data to file
   while (count < data_size) {
     res = write(fd, buf, buf_size);
     if (res == -1) {
-      free(buf);
-      close(fd);
       perror("write() failed");
-      exit(EXIT_FAILURE);
+      goto free_ressources_and_exit;
     }
     count += res;
   }
@@ -94,12 +92,16 @@ long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
   // stop the clock
   res = clock_gettime(CLOCK_MONOTONIC, &end);
   if (res == -1) {
-    free(buf);
-    close(fd);
     perror ("clock_gettime () failed:");
+    goto free_ressources_and_exit;
   }
 
   return compute_time_ms(&start, &end);
+
+  free_ressources_and_exit:
+    free(buf);
+    close(fd);
+    exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv) {
@@ -108,21 +110,28 @@ int main(int argc, char **argv) {
   long time;
   char *buf, *str;
 
+  fd = 0;
+  buf = NULL;
+  str = NULL;
+
   printf("Let's bench some stuff!\n\n");
 
   // Read buffer size from call
   if (argc < 2) { exit(EXIT_FAILURE); }
   buf_size = atoi(argv[1]);
-  if (buf_size == 0) { exit(EXIT_FAILURE); }
+  if (buf_size == 0) { goto free_ressources_and_exit; }
 
   // Allocate buffer
   buf = malloc(buf_size);
-  if (buf == NULL) { exit(EXIT_FAILURE); }
+  if (buf == NULL) {
+    perror("malloc() failed:");
+    goto free_ressources_and_exit;
+  }
 
   // Read data size if set on call
   if (argc > 3) {
     data_size = atoi(argv[3]);
-    if (data_size == 0) { exit(EXIT_FAILURE); }
+    if (data_size == 0) { goto free_ressources_and_exit; }
   }
 
   // Determine path depending on the mode that is given from call
@@ -132,12 +141,11 @@ int main(int argc, char **argv) {
   else if (strcmp(argv[2], "write") == 0) {
     fd = open(PATH, O_WRONLY | O_CREAT, 0777);
   }
-  else { exit(EXIT_FAILURE); }
+  else { goto free_ressources_and_exit; }
 
   if (fd == -1) {
-    free(buf);
     perror("open () failed:");
-    exit(EXIT_FAILURE);
+    goto free_ressources_and_exit;
   };
 
   // Run benchmark according the mode given on call
@@ -147,42 +155,50 @@ int main(int argc, char **argv) {
   else if (strcmp(argv[2], "write") == 0) {
     time = benchmark_write(fd, buf_size, data_size, buf);
   }
-  else { exit(EXIT_FAILURE); }
-
-  free(buf);
-  close(fd);
+  else { goto free_ressources_and_exit; }
 
   // compute length of the string representing benchmark timing
   length = snprintf(NULL, 0, "%ld\n", time);
   if (length < 0) {
     perror("snprintf() failed:");
-    exit(EXIT_FAILURE);
+    goto free_ressources_and_exit;
   }
   str = malloc((1 + length) * sizeof(char));
-  if (buf == NULL) { exit(EXIT_FAILURE); }
+  if (str == NULL) {
+    perror("malloc() failed:");
+    goto free_ressources_and_exit;
+  }
 
   // open result file for appending new benchmark result
   fd = open(RESULTS, O_WRONLY | O_CREAT | O_APPEND, 0777);
   if (fd == -1) {
-    free(str);
     perror("open () failed:");
-    exit(EXIT_FAILURE);
+    goto free_ressources_and_exit;
   };
 
   // prepare result string
   res = sprintf(str, "%ld\n", time);
   if (res < 0) {
-    free(str);
-    close(fd);
-    perror("sprintf() failed:"); exit(EXIT_FAILURE);
+    perror("sprintf() failed:");
+    goto free_ressources_and_exit;
   }
 
   // write new benchmark result in result file
   res = write(fd, str, length + 1);
-  free(str);
-  close(fd);
-  if (res == -1) { perror("write() failed:"); exit(EXIT_FAILURE); }
+  if (res == -1) {
+    perror("write() failed:");
+    goto free_ressources_and_exit;
+  }
 
   fflush(stdout);
+  if (fd) close(fd);
+  if (buf) free(buf);
+  if (str) free(str);
   return 0;
+
+  free_ressources_and_exit:
+    if (fd) close(fd);
+    if (buf) free(buf);
+    if (str) free(str);
+    exit(EXIT_FAILURE);
 }
