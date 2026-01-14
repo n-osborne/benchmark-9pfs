@@ -5,6 +5,8 @@
 #include <errno.h>
 #include <time.h>
 #include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #ifndef PATH
 #define PATH "data"
@@ -53,10 +55,86 @@ long benchmark_read(int fd, int buf_size, char* buf) {
 
   return compute_time_ms(&start, &end);
 
-  free_ressources_and_exit:
-    free(buf);
-    close(fd);
-    exit(EXIT_FAILURE);
+free_ressources_and_exit:
+  free(buf);
+  close(fd);
+  exit(EXIT_FAILURE);
+}
+
+long benchmark_multiple_read(int buf_size, char* buf) {
+  int res, fd;
+  DIR *dirp;
+  struct dirent *d_entry;
+  struct timespec start, end;
+
+  fd = 0;
+
+  dirp = opendir(".");
+  if (dirp == NULL) {
+    perror("opendir() failed");
+    goto free_ressources_and_exit;
+  }
+
+  // start the clock
+  res = clock_gettime(CLOCK_MONOTONIC, &start);
+  if (res == -1) {
+    perror("clock_gettime () failed:");
+    goto free_ressources_and_exit;
+  }
+
+  // for readdir
+  errno = 0;
+
+  // traverse the directory
+  while (d_entry = readdir(dirp)) {
+
+    // select data* files only
+    if (strncmp(d_entry->d_name, "data", 4) == 0) {
+
+      // open file
+      fd = (open(d_entry->d_name, O_RDONLY, 0777));
+      if (fd == -1) {
+        perror("open() failed:");
+        goto free_ressources_and_exit;
+      }
+
+      // read data
+      while ((res = read(fd, buf, buf_size))) {
+        if (res == -1) {
+          perror("read() failed:");
+          goto free_ressources_and_exit;
+        }
+      }
+    }
+
+    // close file
+    if (close(fd) == -1) {
+      perror("close() failed:");
+      goto free_ressources_and_exit;
+    }
+  }
+  // d_entry == NULL (out of loop condition)
+  // fd is closed (loop invariant)
+
+  // stop the clock
+  res = clock_gettime(CLOCK_MONOTONIC, &end);
+  if (res == -1) {
+    perror ("clock_gettime () failed:");
+    goto free_ressources_and_exit;
+  }
+
+  // check errno for readdir failure
+  if (errno) {
+    perror("readdir() failed:");
+    goto free_ressources_and_exit;
+  }
+
+  return compute_time_ms(&start, &end);
+
+free_ressources_and_exit:
+  free(buf);
+  if (fd) close(fd);
+  exit(EXIT_FAILURE);
 }
 
 long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
@@ -98,10 +176,10 @@ long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
 
   return compute_time_ms(&start, &end);
 
-  free_ressources_and_exit:
-    free(buf);
-    close(fd);
-    exit(EXIT_FAILURE);
+free_ressources_and_exit:
+  free(buf);
+  close(fd);
+  exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv) {
@@ -196,9 +274,9 @@ int main(int argc, char **argv) {
   if (str) free(str);
   return 0;
 
-  free_ressources_and_exit:
-    if (fd) close(fd);
-    if (buf) free(buf);
-    if (str) free(str);
-    exit(EXIT_FAILURE);
+free_ressources_and_exit:
+  if (fd) close(fd);
+  if (buf) free(buf);
+  if (str) free(str);
+  exit(EXIT_FAILURE);
 }
