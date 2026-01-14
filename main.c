@@ -156,7 +156,7 @@ free_ressources_and_exit:
 }
 
 long benchmark_write(int buf_size, int data_size, char* buf) {
-  int i, fd, res, count;
+  int fd, res, count;
   struct timespec start, end;
 
   printf("Writing some data to %s...\n", PATH);
@@ -205,6 +205,66 @@ long benchmark_write(int buf_size, int data_size, char* buf) {
 free_ressources_and_exit:
   free(buf);
   close(fd);
+  exit(EXIT_FAILURE);
+}
+
+long benchmark_multiple_write(
+    int buf_size,
+    int data_size,
+    int nb_files,
+    char* buf)
+{
+
+  int res, fd, i, count;
+  struct timespec start, end;
+
+  fd = 0;
+
+  // start the clock
+  res = clock_gettime(CLOCK_MONOTONIC, &start);
+  if (res == -1) {
+    perror("clock_gettime () failed:");
+    goto free_ressources_and_exit;
+  }
+
+  for (i = 0; i < nb_files; i++) {
+    // open file
+    fd = open(PATH, O_WRONLY | O_CREAT, 0777);
+    if (fd == -1) {
+      perror("open () failed:");
+      goto free_ressources_and_exit;
+    };
+
+    count = 0;
+
+    // write data to file
+    while (count < data_size) {
+      // fill buffer with random data
+      fill_buffer(buf_size, buf);
+
+      res = write(fd, buf, buf_size);
+      if (res == -1) {
+        perror("write() failed");
+        goto free_ressources_and_exit;
+      }
+      count += res;
+    }
+
+    // close file
+    fd = close(fd);
+  }
+
+  res = clock_gettime(CLOCK_MONOTONIC, &end);
+  if (res == -1) {
+    perror ("clock_gettime () failed:");
+    goto free_ressources_and_exit;
+  }
+
+  return compute_time_ms(&start, &end);
+
+free_ressources_and_exit:
+  free(buf);
+  if (fd) close(fd);
   exit(EXIT_FAILURE);
 }
 
