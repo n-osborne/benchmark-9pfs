@@ -25,6 +25,14 @@ long compute_time_ms(struct timespec *start, struct timespec *end) {
   return ns / 1000000L + sec * 1e3;
 }
 
+void fill_buffer(int buf_size, char *buf) {
+  int i;
+
+  for (i = 0; i < buf_size; i++) {
+    buf[i] = (char) random();
+  }
+}
+
 long benchmark_read(int buf_size, char* buf) {
   int fd, res;
   struct timespec start, end;
@@ -160,11 +168,6 @@ long benchmark_write(int buf_size, int data_size, char* buf) {
     goto free_ressources_and_exit;
   };
 
-  // fill the buffer with data
-  for (i = 0; i < buf_size; i++) {
-    buf[i] = 'a';
-  }
-
   count = 0;
 
   // start the clock
@@ -176,6 +179,9 @@ long benchmark_write(int buf_size, int data_size, char* buf) {
 
   // write data to file
   while (count < data_size) {
+    // fill buffer with random data
+    fill_buffer(buf_size, buf);
+
     res = write(fd, buf, buf_size);
     if (res == -1) {
       perror("write() failed");
