@@ -25,11 +25,18 @@ long compute_time_ms(struct timespec *start, struct timespec *end) {
   return ns / 1000000L + sec * 1e3;
 }
 
-long benchmark_read(int fd, int buf_size, char* buf) {
-  int res;
+long benchmark_read(int buf_size, char* buf) {
+  int fd, res;
   struct timespec start, end;
 
   printf("Reading data from %s...\n", PATH);
+
+  // open file
+  fd = open(PATH, O_RDONLY, 0777);
+  if (fd == -1) {
+    perror("open () failed:");
+    goto free_ressources_and_exit;
+  };
 
   // start the clock
   res = clock_gettime(CLOCK_MONOTONIC, &start);
@@ -52,6 +59,9 @@ long benchmark_read(int fd, int buf_size, char* buf) {
     perror ("clock_gettime () failed:");
     goto free_ressources_and_exit;
   }
+
+  // close file
+  close(fd);
 
   return compute_time_ms(&start, &end);
 
@@ -86,7 +96,7 @@ long benchmark_multiple_read(int buf_size, char* buf) {
   errno = 0;
 
   // traverse the directory
-  while (d_entry = readdir(dirp)) {
+  while ((d_entry = readdir(dirp))) {
 
     // select data* files only
     if (strncmp(d_entry->d_name, "data", 4) == 0) {
@@ -137,11 +147,18 @@ free_ressources_and_exit:
   exit(EXIT_FAILURE);
 }
 
-long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
-  int i, res, count;
+long benchmark_write(int buf_size, int data_size, char* buf) {
+  int i, fd, res, count;
   struct timespec start, end;
 
   printf("Writing some data to %s...\n", PATH);
+
+  // open file
+  fd = open(PATH, O_WRONLY | O_CREAT, 0777);
+  if (fd == -1) {
+    perror("open () failed:");
+    goto free_ressources_and_exit;
+  };
 
   // fill the buffer with data
   for (i = 0; i < buf_size; i++) {
@@ -173,6 +190,9 @@ long benchmark_write(int fd, int buf_size, int data_size, char* buf) {
     perror ("clock_gettime () failed:");
     goto free_ressources_and_exit;
   }
+
+  // close file
+  close(fd);
 
   return compute_time_ms(&start, &end);
 
@@ -212,26 +232,15 @@ int main(int argc, char **argv) {
     if (data_size == 0) { goto free_ressources_and_exit; }
   }
 
-  // Determine path depending on the mode that is given from call
-  if (strcmp(argv[2], "read") == 0) {
-    fd = open(PATH, O_RDONLY, 0777);
-  }
-  else if (strcmp(argv[2], "write") == 0) {
-    fd = open(PATH, O_WRONLY | O_CREAT, 0777);
-  }
-  else { goto free_ressources_and_exit; }
-
-  if (fd == -1) {
-    perror("open () failed:");
-    goto free_ressources_and_exit;
-  };
-
   // Run benchmark according the mode given on call
   if (strcmp(argv[2], "read") == 0) {
-    time = benchmark_read(fd, buf_size, buf);
+    time = benchmark_read(buf_size, buf);
   }
   else if (strcmp(argv[2], "write") == 0) {
-    time = benchmark_write(fd, buf_size, data_size, buf);
+    time = benchmark_write(buf_size, data_size, buf);
+  }
+  else if (strcmp(argv[2], "multiple-read") == 0) {
+    time = benchmark_multiple_read(buf_size, buf);
   }
   else { goto free_ressources_and_exit; }
 
