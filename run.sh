@@ -52,7 +52,7 @@ fi
 # running the unikernel with approriate arguments
 qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G\
   -nodefaults -serial stdio -kernel .unikraft/build/bob_qemu-x86_64 \
-  -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $BUFSIZE $MODE $DATASIZE" \
+  -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $MODE $BUFSIZE $DATASIZE" \
   -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
 
 done
