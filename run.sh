@@ -72,12 +72,12 @@ fi
 case $PLATFORM in
   uk)
     qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G\
-      -nodefaults -serial stdio -kernel .unikraft/build/bob_qemu-x86_64 \
+      -nodefaults -serial stdio -kernel bob_qemu-x86_64 \
       -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $MODE $DIR $BUFSIZE $DATASIZE $NBFILES" \
       -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
     ;;
   linux)
-    ./a.out $MODE $DIR $BUFSIZE $DATASIZE $NBFILES
+    ./bob-linux $MODE $DIR $BUFSIZE $DATASIZE $NBFILES
     ;;
   *)
     usage
