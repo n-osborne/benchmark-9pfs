@@ -24,13 +24,14 @@
 
 enum mode { READ, WRITE, MULTIPLE_READ, MULTIPLE_WRITE };
 
-long benchmark_read(char *buf, int buf_size);
+long benchmark_read(char *dir, char *buf, int buf_size);
 
-long benchmark_multiple_read(char *buf, int buf_size);
+long benchmark_multiple_read(char *dir, char *buf, int buf_size);
 
-long benchmark_write(char *buf, int buf_size, int data_size);
+long benchmark_write(char *dir, char *buf, int buf_size, int data_size);
 
 long benchmark_multiple_write(
+    char *dir,
     char* buf,
     int buf_size,
     int data_size,
@@ -44,16 +45,17 @@ int main(int argc, char **argv) {
 
   int fd, res, length, buf_size, data_size, nb_files;
   long time_ms;
-  char *buf, *str;
+  char *buf, *str, *dir, *results;
   enum mode mode;
 
   fd = 0;
   buf = NULL;
   str = NULL;
+  results = NULL;
 
   printf("Let's bench some stuff!\n\n");
 
-  if (argc < 3) { exit(EXIT_FAILURE); }
+  if (argc < 4) { exit(EXIT_FAILURE); }
 
   // get the mode argument from cli
   if ((strncmp(argv[1], "read", 4)) == 0) {
@@ -66,8 +68,12 @@ int main(int argc, char **argv) {
     mode = MULTIPLE_WRITE;
   } else { exit(EXIT_FAILURE); }
 
+  // Read dir from call
+  // TODO: sanitize string
+  dir = argv[2];
+
   // Read buffer size from call
-  buf_size = atoi(argv[2]);
+  buf_size = atoi(argv[3]);
   if (buf_size == 0) { goto free_ressources_and_exit; }
 
   // In order to allow picking one slice of a big one-time-randomly-filled
@@ -85,30 +91,30 @@ int main(int argc, char **argv) {
   }
 
   // Read data size if set on call
-  if (argc > 3) {
-    data_size = atoi(argv[3]);
+  if (argc > 4) {
+    data_size = atoi(argv[4]);
     if (data_size == 0) { goto free_ressources_and_exit; }
   }
 
   // Read nb files if set on call
-  if (argc > 4) {
-    nb_files = atoi(argv[4]);
+  if (argc > 5) {
+    nb_files = atoi(argv[5]);
     if (nb_files == 0) { goto free_ressources_and_exit; }
   }
 
   // Run benchmark according to the mode given on call
   switch (mode) {
     case READ:
-      time_ms = benchmark_read(buf, buf_size);
+      time_ms = benchmark_read(dir, buf, buf_size);
       break;
     case WRITE:
-      time_ms = benchmark_write(buf, buf_size, data_size);
+      time_ms = benchmark_write(dir, buf, buf_size, data_size);
       break;
     case MULTIPLE_READ:
-      time_ms = benchmark_multiple_read(buf, buf_size);
+      time_ms = benchmark_multiple_read(dir, buf, buf_size);
       break;
     case MULTIPLE_WRITE:
-      time_ms = benchmark_multiple_write(buf, buf_size, data_size, nb_files);
+      time_ms = benchmark_multiple_write(dir, buf, buf_size, data_size, nb_files);
       break;
     default:
       goto free_ressources_and_exit;
@@ -126,8 +132,19 @@ int main(int argc, char **argv) {
     goto free_ressources_and_exit;
   }
 
+  // prepare result path
+  results = malloc(strlen(dir) + strlen(RESULTS) + 1);
+  if (results == NULL) {
+    perror("malloc() failed:");
+    goto free_ressources_and_exit;
+  }
+
+  strcpy(results, dir);
+  strcat(results, "/");
+  strcpy(results, RESULTS);
+
   // open result file for appending new benchmark result
-  fd = open(RESULTS, O_WRONLY | O_CREAT | O_APPEND, 0777);
+  fd = open(results, O_WRONLY | O_CREAT | O_APPEND, 0777);
   if (fd == -1) {
     perror("open () failed:");
     goto free_ressources_and_exit;
@@ -148,15 +165,17 @@ int main(int argc, char **argv) {
   }
 
   fflush(stdout);
-  if (fd) close(fd);
+  if (fd > 0) close(fd);
   if (buf) free(buf);
   if (str) free(str);
+  if (results) free(results);
   return 0;
 
 free_ressources_and_exit:
-  if (fd) close(fd);
+  if (fd > 0) close(fd);
   if (buf) free(buf);
   if (str) free(str);
+  if (results) free(results);
   exit(EXIT_FAILURE);
 }
 
@@ -177,14 +196,26 @@ void fill_buffer(char *buf, int buf_size) {
   }
 }
 
-long benchmark_read(char *buf, int buf_size) {
+long benchmark_read(char *dir, char *buf, int buf_size) {
   int fd, res;
   struct timespec start, end;
+  char *path;
+  size_t len;
 
-  printf("Reading data from %s...\n", PATH);
+  fd = 0;
+  path = 0;
+  len = strlen(dir) + strlen(PATH) + 1;
+  path = malloc(len);
+  if (path == NULL) exit(EXIT_FAILURE);
+
+  strcpy(path, dir);
+  strcat(path, "/");
+  strcat(path, PATH);
+
+  printf("Reading data from %s...\n", path);
 
   // open file
-  fd = open(PATH, O_RDONLY, 0777);
+  fd = open(path, O_RDONLY, 0777);
   if (fd == -1) {
     perror("open () failed:");
     goto free_ressources_and_exit;
@@ -213,17 +244,25 @@ long benchmark_read(char *buf, int buf_size) {
   }
 
   // close file
-  close(fd);
+  fd = close(fd);
+  if (fd == -1) {
+    perror("close() failed:");
+    goto free_ressources_and_exit;
+  }
+
+  // buf is freed in main
+  if (path) free(path);
 
   return compute_time_ms(&start, &end);
 
 free_ressources_and_exit:
-  free(buf);
-  close(fd);
+  if (buf) free(buf);
+  if (path) free(path);
+  if (fd > 0) close(fd);
   exit(EXIT_FAILURE);
 }
 
-long benchmark_multiple_read(char *buf, int buf_size) {
+long benchmark_multiple_read(char *dir, char *buf, int buf_size) {
   int res, fd;
   DIR *dirp;
   struct dirent *d_entry;
@@ -231,7 +270,9 @@ long benchmark_multiple_read(char *buf, int buf_size) {
 
   fd = 0;
 
-  dirp = opendir(".");
+  printf("Reading multiple files from %s directory...\n", dir);
+
+  dirp = opendir(dir);
   if (dirp == NULL) {
     perror("opendir() failed");
     goto free_ressources_and_exit;
@@ -269,7 +310,8 @@ long benchmark_multiple_read(char *buf, int buf_size) {
       }
 
       // close file
-      if (close(fd) == -1) {
+      fd = close(fd);
+      if (fd == -1) {
         perror("close() failed:");
         goto free_ressources_and_exit;
       }
@@ -277,6 +319,11 @@ long benchmark_multiple_read(char *buf, int buf_size) {
   }
   // d_entry == NULL (out of loop condition)
   // fd is closed (loop invariant)
+  // check errno for readdir failure
+  if (errno) {
+    perror("readdir() failed:");
+    goto free_ressources_and_exit;
+  }
 
   // stop the clock
   res = clock_gettime(CLOCK_MONOTONIC, &end);
@@ -285,25 +332,31 @@ long benchmark_multiple_read(char *buf, int buf_size) {
     goto free_ressources_and_exit;
   }
 
-  // check errno for readdir failure
-  if (errno) {
-    perror("readdir() failed:");
-    goto free_ressources_and_exit;
-  }
-
   return compute_time_ms(&start, &end);
 
 free_ressources_and_exit:
-  free(buf);
-  if (fd) close(fd);
+  if (buf) free(buf);
+  if (fd > 0) close(fd);
   exit(EXIT_FAILURE);
 }
 
-long benchmark_write(char *buf, int buf_size, int data_size) {
+long benchmark_write(char *dir, char *buf, int buf_size, int data_size) {
   int fd, res, count, write_size, idx;
   struct timespec start, end;
+  char *path;
+  size_t len;
 
-  printf("Writing some data to %s...\n", PATH);
+  fd = 0;
+  path = 0;
+  len = strlen(dir) + strlen(PATH) + 1;
+  path = malloc(len);
+  if (path == NULL) { goto free_ressources_and_exit; }
+
+  strcpy(path, dir);
+  strcat(path, "/");
+  strcat(path, PATH);
+
+  printf("Writing some data to %s...\n", path);
 
   // compute write_size
   write_size = buf_size / FACTOR;
@@ -312,7 +365,7 @@ long benchmark_write(char *buf, int buf_size, int data_size) {
   fill_buffer(buf, buf_size);
 
   // open file
-  fd = open(PATH, O_WRONLY | O_CREAT, 0777);
+  fd = open(path, O_WRONLY | O_CREAT, 0777);
   if (fd == -1) {
     perror("open () failed:");
     goto free_ressources_and_exit;
@@ -351,17 +404,26 @@ long benchmark_write(char *buf, int buf_size, int data_size) {
   }
 
   // close file
-  close(fd);
+  fd = close(fd);
+  if (fd == -1) {
+    perror("close() failed");
+    goto free_ressources_and_exit;
+  }
+
+  // buf is freed in main
+  if (path) free(path);
 
   return compute_time_ms(&start, &end);
 
 free_ressources_and_exit:
-  free(buf);
-  close(fd);
+  if (buf) free(buf);
+  if (path) free(path);
+  if (fd > 0) close(fd);
   exit(EXIT_FAILURE);
 }
 
 long benchmark_multiple_write(
+    char *dir,
     char* buf,
     int buf_size,
     int data_size,
@@ -370,8 +432,26 @@ long benchmark_multiple_write(
 
   int res, fd, i, count, write_size, idx;
   struct timespec start, end;
+  char *path;
 
   fd = 0;
+  path = malloc(strlen(dir) + strlen(PATH) + 1);
+  if (path == NULL) {
+    perror("malloc() failed");
+    goto free_ressources_and_exit;
+  }
+
+  strcpy(path, dir);
+  strcat(path, "/");
+  strcat(path, PATH);
+
+  printf("Writing multiple times to %s...\n", path);
+
+  // compute write_size
+  write_size = buf_size / FACTOR;
+
+  // fill buffer with random data
+  fill_buffer(buf, buf_size);
 
   // start the clock
   res = clock_gettime(CLOCK_MONOTONIC, &start);
@@ -380,15 +460,9 @@ long benchmark_multiple_write(
     goto free_ressources_and_exit;
   }
 
-  // compute write_size
-  write_size = buf_size / FACTOR;
-
-  // fill buffer with random data
-  fill_buffer(buf, buf_size);
-
   for (i = 0; i < nb_files; i++) {
     // open file
-    fd = open(PATH, O_WRONLY | O_CREAT, 0777);
+    fd = open(path, O_WRONLY | O_CREAT, 0777);
     if (fd == -1) {
       perror("open () failed:");
       goto free_ressources_and_exit;
@@ -414,7 +488,13 @@ long benchmark_multiple_write(
 
     // close file
     fd = close(fd);
+    if (fd == -1) {
+      perror("close() failed:");
+      goto free_ressources_and_exit;
+    }
   }
+  // fd is closed (loop invariant)
+  // path has been written nb_files time with random data
 
   res = clock_gettime(CLOCK_MONOTONIC, &end);
   if (res == -1) {
@@ -422,10 +502,14 @@ long benchmark_multiple_write(
     goto free_ressources_and_exit;
   }
 
+  // buf is freed in main
+  if (path) free(path);
+
   return compute_time_ms(&start, &end);
 
 free_ressources_and_exit:
-  free(buf);
-  if (fd) close(fd);
+  if (buf) free(buf);
+  if (path) free(path);
+  if (fd > 0) close(fd);
   exit(EXIT_FAILURE);
 }
