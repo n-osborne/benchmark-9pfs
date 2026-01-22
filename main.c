@@ -402,6 +402,8 @@ long benchmark_write(char *dir, char *buf, int buf_size, long data_size) {
     count += res;
   }
 
+  fsync(fd); // ensure all is really written
+
   // stop the clock
   res = clock_gettime(CLOCK_MONOTONIC, &end);
   if (res == -1) {
@@ -492,6 +494,8 @@ long benchmark_multiple_write(
       }
       count += res;
     }
+
+    fsync(fd); // ensure all is really written
 
     // close file
     fd = close(fd);
