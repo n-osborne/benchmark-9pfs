@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
   // Read buffer size from call
   buf_size = atoi(argv[3]);
   if (buf_size == 0) { goto free_ressources_and_exit; }
+  buf_size <<= 10; // input is given in kilobytes!
 
   // In order to allow picking one slice of a big one-time-randomly-filled
   // buffer when benchmarking writes operations
