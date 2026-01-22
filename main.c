@@ -346,7 +346,8 @@ free_ressources_and_exit:
 }
 
 long benchmark_write(char *dir, char *buf, int buf_size, long data_size) {
-  int fd, res, count, write_size, idx;
+  int fd, res, write_size, idx;
+  long count;
   struct timespec start, end;
   char *path;
   size_t len;
@@ -435,8 +436,9 @@ long benchmark_multiple_write(
     int nb_files)
 {
 
-  int res, fd, i, count, write_size, idx;
+  int res, fd, i, write_size, idx;
   struct timespec start, end;
+  long count;
   char *path;
 
   fd = 0;

@@ -100,4 +100,4 @@ done
 sed -i 's/\x00//g' $RESULTS
 sed -i '/^\s*$/d' $RESULTS
 sort -n $RESULTS -o $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
-rm -f ${SHARED}/* results.txt
+rm -rf "${SHARED:?}" results.txt
