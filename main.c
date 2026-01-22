@@ -28,13 +28,13 @@ long benchmark_read(char *dir, char *buf, int buf_size);
 
 long benchmark_multiple_read(char *dir, char *buf, int buf_size);
 
-long benchmark_write(char *dir, char *buf, int buf_size, int data_size);
+long benchmark_write(char *dir, char *buf, int buf_size, long data_size);
 
 long benchmark_multiple_write(
     char *dir,
     char* buf,
     int buf_size,
-    int data_size,
+    long data_size,
     int nb_files);
 
 long compute_time_ms(struct timespec *start, struct timespec *end);
@@ -43,7 +43,8 @@ void fill_buffer(char *buf, int buf_size);
 
 int main(int argc, char **argv) {
 
-  int fd, res, length, buf_size, data_size, nb_files;
+  int fd, res, length, buf_size, nb_files;
+  long data_size;
   long time_ms;
   char *buf, *str, *dir, *results;
   enum mode mode;
@@ -93,6 +94,7 @@ int main(int argc, char **argv) {
   // Read data size if set on call
   if (argc > 4) {
     data_size = atoi(argv[4]);
+    data_size <<= 20; // input is given in megabytes!
     if (data_size == 0) { goto free_ressources_and_exit; }
   }
 
@@ -342,7 +344,7 @@ free_ressources_and_exit:
   exit(EXIT_FAILURE);
 }
 
-long benchmark_write(char *dir, char *buf, int buf_size, int data_size) {
+long benchmark_write(char *dir, char *buf, int buf_size, long data_size) {
   int fd, res, count, write_size, idx;
   struct timespec start, end;
   char *path;
@@ -428,7 +430,7 @@ long benchmark_multiple_write(
     char *dir,
     char* buf,
     int buf_size,
-    int data_size,
+    long data_size,
     int nb_files)
 {
 
