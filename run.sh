@@ -103,5 +103,5 @@ done
 # cleanup, sort and copy results
 sed -i 's/\x00//g' $RESULTS
 sed -i '/^\s*$/d' $RESULTS
-sort -n $RESULTS -o $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
+cp $RESULTS $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
 rm -rf "${SHARED:?}" results.txt
