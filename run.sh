@@ -66,14 +66,17 @@ echo "[$i/$RUNS_NB] $MODE $PLATFORM data=$DATASIZE buf=$BUFSIZE nbfiles=$NBFILES
 # write data if in read mode
 if [ "$MODE" = "read" ]
 then
-  dd if=/dev/urandom of=${DATA} bs=${DATASIZE}MB count=1 iflag=fullblock status=none
+  #generate a file using a repeating pattern of 101 random characters
+  pattern=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 101)
+  yes "$pattern" | head -c ${DATASIZE}MB  > ${DATA}
 fi
 
 if [ "$MODE" = "multiple-read" ]
 then
   for ((i=0; i<$NBFILES; i++))
   do
-    dd if=/dev/urandom of="$DATA$i" bs=${DATASIZE}M count=1 iflag=fullblock status=none
+    pattern=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 101)
+    yes "$pattern" | head -c ${DATASIZE}MB  > "$DATA$i"
   done
 fi
 
