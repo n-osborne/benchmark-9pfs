@@ -62,7 +62,7 @@ mkdir -p $OUTDIR
 for i in $(seq "$RUNS_NB")
 do
 
-echo "[$i/$RUNS_NB] $MODE $PLATFORM data=$DATASIZE buf=$BUFSIZE nbfiles=$NBFILES"
+echo -e "\e[31m[$i/$RUNS_NB] $MODE $PLATFORM data=$DATASIZE buf=$BUFSIZE nbfiles=$NBFILES\e[0m"
 # write data if in read mode
 if [ "$MODE" = "read" ]
 then
