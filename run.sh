@@ -24,7 +24,7 @@ if [ "$VERBOSE" = "1" ]; then
     set -x
 fi
 
-RUNS_NB=2
+RUNS_NB="${RUNS_NB:-99}"
 
 # Where (at least) all input data lives (from the PoV of the host)
 SHARED="/tmp/shared"
