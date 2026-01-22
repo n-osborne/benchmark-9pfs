@@ -295,9 +295,11 @@ long benchmark_multiple_read(char *dir, char *buf, int buf_size) {
     if (strncmp(d_entry->d_name, "data", 4) == 0) {
 
       // open file
-      fd = (open(d_entry->d_name, O_RDONLY, 0777));
+      char* path = NULL;
+      asprintf(&path, "%s/%s", dir, d_entry->d_name);
+      fd = (open(path, O_RDONLY, 0777));
       if (fd == -1) {
-        perror("open() failed:");
+        fprintf(stderr, "open(%s) failed:", path);
         goto free_ressources_and_exit;
       }
 
