@@ -20,18 +20,28 @@ then
   exit
 fi
 
-set -x
+if [ "$VERBOSE" = "1" ]; then
+    set -x
+fi
 
+RUNS_NB=2
+
+# Where (at least) all input data lives (from the PoV of the host)
 SHARED="/tmp/shared"
 DATA=$SHARED/data
-RESULTS=$SHARED/results.txt
 OUTDIR="results"
 MODE=$1
 PLATFORM=$2
-DIR=""
+DIR="" # Where the input data lives (from the PoV of the guest)
 case $PLATFORM in
-  uk) DIR=".";;
-  linux) DIR="/tmp/shared";;
+  uk)
+      DIR="."
+      RESULTS=$SHARED/results.txt
+      ;;
+  linux)
+      DIR="/tmp/shared"
+      RESULTS=./results.txt
+      ;;
   *) usage; exit;;
 esac
 BUFSIZE=$3
@@ -41,8 +51,6 @@ NBFILES=$5
 mkdir -p $SHARED
 mkdir -p $OUTDIR
 
-printf "buffer size: %s\n" $BUFSIZE
-
 # create an empty results file otherwise unikraft (still) fails when creating
 # it
 > $RESULTS
@@ -51,20 +59,21 @@ printf "buffer size: %s\n" $BUFSIZE
 > $DATA
 
 # run the experiment 100 times
-for _ in {0..99}
+for i in $(seq "$RUNS_NB")
 do
 
+echo "[$i/$RUNS_NB] $MODE $PLATFORM data=$DATASIZE buf=$BUFSIZE nbfiles=$NBFILES"
 # write data if in read mode
 if [ "$MODE" = "read" ]
 then
-  dd if=/dev/urandom of=${DATA} bs=${DATASIZE}MB count=1 iflag=fullblock
+  dd if=/dev/urandom of=${DATA} bs=${DATASIZE}MB count=1 iflag=fullblock status=none
 fi
 
 if [ "$MODE" = "multiple-read" ]
 then
   for ((i=0; i<$NBFILES; i++))
   do
-    dd if=/dev/urandom of="$DATA$i" bs=${DATASIZE}M count=1 iflag=fullblock
+    dd if=/dev/urandom of="$DATA$i" bs=${DATASIZE}M count=1 iflag=fullblock status=none
   done
 fi
 
@@ -91,4 +100,4 @@ done
 sed -i 's/\x00//g' $RESULTS
 sed -i '/^\s*$/d' $RESULTS
 sort -n $RESULTS -o $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
-rm ${SHARED}/*
+rm -f ${SHARED}/* results.txt
