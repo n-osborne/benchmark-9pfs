@@ -83,7 +83,8 @@ case $PLATFORM in
     qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G\
       -nodefaults -serial stdio -kernel bob_qemu-x86_64 \
       -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $MODE $DIR $BUFSIZE $DATASIZE $NBFILES" \
-      -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
+      -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough \
+    | sed 's/^.*SeaBIOS/SeaBIOS/'
     ;;
   linux)
     ./bob-linux $MODE $DIR $BUFSIZE $DATASIZE $NBFILES
