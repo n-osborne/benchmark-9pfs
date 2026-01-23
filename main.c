@@ -28,13 +28,13 @@ long benchmark_read(char *dir, char *buf, int buf_size);
 
 long benchmark_multiple_read(char *dir, char *buf, int buf_size);
 
-long benchmark_write(char *dir, char *buf, int buf_size, int data_size);
+long benchmark_write(char *dir, char *buf, int buf_size, long data_size);
 
 long benchmark_multiple_write(
     char *dir,
     char* buf,
     int buf_size,
-    int data_size,
+    long data_size,
     int nb_files);
 
 long compute_time_ms(struct timespec *start, struct timespec *end);
@@ -43,7 +43,8 @@ void fill_buffer(char *buf, int buf_size);
 
 int main(int argc, char **argv) {
 
-  int fd, res, length, buf_size, data_size, nb_files;
+  int fd, res, length, buf_size, nb_files;
+  long data_size;
   long time_ms;
   char *buf, *str, *dir, *results;
   enum mode mode;
@@ -75,6 +76,7 @@ int main(int argc, char **argv) {
   // Read buffer size from call
   buf_size = atoi(argv[3]);
   if (buf_size == 0) { goto free_ressources_and_exit; }
+  buf_size <<= 10; // input is given in kilobytes!
 
   // In order to allow picking one slice of a big one-time-randomly-filled
   // buffer when benchmarking writes operations
@@ -93,6 +95,7 @@ int main(int argc, char **argv) {
   // Read data size if set on call
   if (argc > 4) {
     data_size = atoi(argv[4]);
+    data_size <<= 20; // input is given in megabytes!
     if (data_size == 0) { goto free_ressources_and_exit; }
   }
 
@@ -295,9 +298,11 @@ long benchmark_multiple_read(char *dir, char *buf, int buf_size) {
     if (strncmp(d_entry->d_name, "data", 4) == 0) {
 
       // open file
-      fd = (open(d_entry->d_name, O_RDONLY, 0777));
+      char* path = NULL;
+      asprintf(&path, "%s/%s", dir, d_entry->d_name);
+      fd = (open(path, O_RDONLY, 0777));
       if (fd == -1) {
-        perror("open() failed:");
+        fprintf(stderr, "open(%s) failed:", path);
         goto free_ressources_and_exit;
       }
 
@@ -340,8 +345,9 @@ free_ressources_and_exit:
   exit(EXIT_FAILURE);
 }
 
-long benchmark_write(char *dir, char *buf, int buf_size, int data_size) {
-  int fd, res, count, write_size, idx;
+long benchmark_write(char *dir, char *buf, int buf_size, long data_size) {
+  int fd, res, write_size, idx;
+  long count;
   struct timespec start, end;
   char *path;
   size_t len;
@@ -396,6 +402,8 @@ long benchmark_write(char *dir, char *buf, int buf_size, int data_size) {
     count += res;
   }
 
+  fsync(fd); // ensure all is really written
+
   // stop the clock
   res = clock_gettime(CLOCK_MONOTONIC, &end);
   if (res == -1) {
@@ -426,12 +434,13 @@ long benchmark_multiple_write(
     char *dir,
     char* buf,
     int buf_size,
-    int data_size,
+    long data_size,
     int nb_files)
 {
 
-  int res, fd, i, count, write_size, idx;
+  int res, fd, i, write_size, idx;
   struct timespec start, end;
+  long count;
   char *path;
 
   fd = 0;
@@ -485,6 +494,8 @@ long benchmark_multiple_write(
       }
       count += res;
     }
+
+    fsync(fd); // ensure all is really written
 
     // close file
     fd = close(fd);

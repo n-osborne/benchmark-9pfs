@@ -20,18 +20,28 @@ then
   exit
 fi
 
-set -x
+if [ "$VERBOSE" = "1" ]; then
+    set -x
+fi
 
+RUNS_NB="${RUNS_NB:-99}"
+
+# Where (at least) all input data lives (from the PoV of the host)
 SHARED="/tmp/shared"
 DATA=$SHARED/data
-RESULTS=$SHARED/results.txt
 OUTDIR="results"
 MODE=$1
 PLATFORM=$2
-DIR=""
+DIR="" # Where the input data lives (from the PoV of the guest)
 case $PLATFORM in
-  uk) DIR=".";;
-  linux) DIR="/tmp/shared";;
+  uk)
+      DIR="."
+      RESULTS=$SHARED/results.txt
+      ;;
+  linux)
+      DIR="/tmp/shared"
+      RESULTS=./results.txt
+      ;;
   *) usage; exit;;
 esac
 BUFSIZE=$3
@@ -41,8 +51,6 @@ NBFILES=$5
 mkdir -p $SHARED
 mkdir -p $OUTDIR
 
-printf "buffer size: %s\n" $BUFSIZE
-
 # create an empty results file otherwise unikraft (still) fails when creating
 # it
 > $RESULTS
@@ -51,20 +59,24 @@ printf "buffer size: %s\n" $BUFSIZE
 > $DATA
 
 # run the experiment 100 times
-for _ in {0..99}
+for i in $(seq "$RUNS_NB")
 do
 
+echo -e "\e[31m[$i/$RUNS_NB] $MODE $PLATFORM data=$DATASIZE buf=$BUFSIZE nbfiles=$NBFILES\e[0m"
 # write data if in read mode
 if [ "$MODE" = "read" ]
 then
-  dd if=/dev/urandom of=${DATA} bs=${DATASIZE}MB count=1 iflag=fullblock
+  #generate a file using a repeating pattern of 101 random characters
+  pattern=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 101)
+  yes "$pattern" | head -c ${DATASIZE}MB  > ${DATA}
 fi
 
 if [ "$MODE" = "multiple-read" ]
 then
   for ((i=0; i<$NBFILES; i++))
   do
-    dd if=/dev/urandom of="$DATA$i" bs=${DATASIZE}M count=1 iflag=fullblock
+    pattern=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c 101)
+    yes "$pattern" | head -c ${DATASIZE}MB  > "$DATA$i"
   done
 fi
 
@@ -74,7 +86,8 @@ case $PLATFORM in
     qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G\
       -nodefaults -serial stdio -kernel bob_qemu-x86_64 \
       -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $MODE $DIR $BUFSIZE $DATASIZE $NBFILES" \
-      -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough
+      -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough \
+    | sed 's/^.*SeaBIOS/SeaBIOS/'
     ;;
   linux)
     ./bob-linux $MODE $DIR $BUFSIZE $DATASIZE $NBFILES
@@ -90,5 +103,5 @@ done
 # cleanup, sort and copy results
 sed -i 's/\x00//g' $RESULTS
 sed -i '/^\s*$/d' $RESULTS
-sort -n $RESULTS -o $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
-rm ${SHARED}/*
+cp $RESULTS $OUTDIR/${PLATFORM}_${MODE}_${DATASIZE}M_${BUFSIZE}K_${NBFILES}
+rm -rf "${SHARED:?}" results.txt
