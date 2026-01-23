@@ -58,6 +58,11 @@ mkdir -p $OUTDIR
 # same for data file in case of write mode
 > $DATA
 
+if [ "$MODE" = "write" ]
+then
+    head -c ${DATASIZE}MB /dev/zero > ${DATA}
+fi
+
 # run the experiment 100 times
 for i in $(seq "$RUNS_NB")
 do
