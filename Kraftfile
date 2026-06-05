@@ -5,8 +5,7 @@ name: bob
 unikraft:
   version: stable
   kconfig:
-    CONFIG_LIBUK9P: "y"
-    CONFIG_LIB9PFS: "y"
+    CONFIG_LIBUKFS_VIRTIOFS: 'y'
     CONFIG_LIBVFSCORE_AUTOMOUNT_UP: 'y'
     CONFIG_LIBVFSCORE_AUTOMOUNT: 'y'
 
