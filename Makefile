@@ -35,7 +35,7 @@ bob-linux: main.c
 
 bob_qemu-x86_64: main.c Kraftfile
 	UK_CFLAGS="-std=gnu17" kraft build
-	cp .unikraft/build/bob_qemu-x86_64 bob_qemu-x86_64
+	cp out/bob_qemu-x86_64 bob_qemu-x86_64
 
 clean:
 	rm bob-linux
