@@ -90,7 +90,7 @@ case $PLATFORM in
   uk)
     qemu-system-x86_64 -cpu host --enable-kvm -nographic -m 1G\
       -nodefaults -serial stdio -kernel bob_qemu-x86_64 \
-      -append "vfs.fstab=[ \"fs1:/:9pfs:::mkmp\" ] -- $MODE $DIR $BUFSIZE $DATASIZE $NBFILES" \
+      -append "vfs.fstab=[ \"fs1:/:virtiofs:::mkmp\" ] -- $MODE $DIR $BUFSIZE $DATASIZE $NBFILES" \
       -virtfs local,path=$SHARED,mount_tag=fs1,security_model=passthrough \
     | sed 's/^.*SeaBIOS/SeaBIOS/'
     ;;
