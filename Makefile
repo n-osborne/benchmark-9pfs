@@ -38,7 +38,9 @@ bob_qemu-x86_64: main.c Kraftfile
 	cp out/bob_qemu-x86_64 bob_qemu-x86_64
 
 clean:
-	rm bob-linux
-	rm bob_qemu-x86_64
+	rm -f bob-linux
+	rm -f bob_qemu-x86_64
+	rm -f .config*
+	rm -rf .unikraft
 	kraft clean
 
