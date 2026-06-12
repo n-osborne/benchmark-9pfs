@@ -9,11 +9,12 @@ unikraft:
     CONFIG_LIB9PFS: "y"
     CONFIG_LIBVFSCORE_AUTOMOUNT_UP: 'y'
     CONFIG_LIBVFSCORE_AUTOMOUNT: 'y'
+    CONFIG_LIBUKLIBPARAM: 'y'
 
 volumes: /tmp/shared:/
 
 libraries:
-  musl: staging
+  musl: stable
 
 targets:
   - name: bob
